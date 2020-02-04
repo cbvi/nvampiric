@@ -1,5 +1,4 @@
-import streams, strutils
-
+import streams, strutils, os
 
 type 
     Log = object
@@ -9,7 +8,7 @@ type
 
 let names = ["ori"]
 
-proc isImportant(line: string): bool =
+proc isImportant(line: string, names: seq[string]): bool =
     if line.len() > 10 and line[6..10] == "-!-":
         return false
     var start = line.find('<')
@@ -25,26 +24,36 @@ proc isImportant(line: string): bool =
             return true
     return false
 
-try:
-    const myr = Log(
+#os.sleep(5000)
+echo "init"
+
+var logs = [
+    Log(
         name : "log1",
         path : "#log1.log",
-        important : ["ori"][0..^1]
-    )
-    const dfly = Log(
+        important : @["ori"]
+    ),
+    Log(
         name : "log2",
         path : "#log2bsd.log",
-        important : ["Name1", "justins"][0..^1]
+        important : @["Name1", "justins"]
     )
+]
 
-    const fefd = [myr, dfly]
+#os.sleep(5000)
 
-    var st = openFileStream("#log1.log", fmRead)
-    var line = ""
-    while st.readLine(line):
-        if isImportant(line):
-            #echo line
-            discard line
-    st.close()
-except IOError:
-    stderr.writeLine getCurrentExceptionMsg()
+echo logs
+dumpNumberOfInstances()
+
+for log in logs:
+    try:
+        let st = openFileStream(log.path, fmRead)
+        var line = ""
+        while st.readLine(line):
+            if isImportant(line, log.important):
+                discard line
+        st.close()
+    except IOError:
+        stderr.writeLine getCurrentExceptionMsg()
+
+dumpNumberOfInstances()
