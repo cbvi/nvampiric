@@ -7,6 +7,7 @@ type
 
 type 
     Log = object
+        id: int
         name: string
         path: string
         important: seq[string]
@@ -24,44 +25,45 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
     if stop <= start:
         return false
     for search in searchers:
-        #if line[start..stop].toLowerAscii.contains(name):
         if search.tab.find(line, search.str, start, stop) >= 0:
             return true
         return false
     return false
 
-proc getOffsets(arr: var array[2, uint64]): bool =
+proc getOffsets(buf: var array[2, uint64]): void =
     try:
         let st = openFileStream("offsets.txt", fmRead)
-        arr[0] = 42
-        arr[1] = 77
+        st.read(buf)
         st.close()
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
-        return false
-    return true
+        stderr.writeLine "0 offsets will be used"
 
 #os.sleep(5000)
 echo "init"
 
-const myr = Log(
-    name : "log1",
-    path : "#log1.log",
-    important : @["Name3"]
-)
-const dfl = Log(
-    name : "log2",
-    path : "#log2bsd.log",
-    important : @["Name1", "Name2"]
-)
-
-const logs = [myr, dfl]
+const logs = [
+    Log(
+        id   : 0,
+        name : "log2",
+        path : "#log2bsd.log",
+        important : @["Name1", "Name2"]
+    ),
+    Log(
+        id   : 1,
+        name : "log1",
+        path : "#log1.log",
+        important : @["Name3"]
+    )
+]
 
 #os.sleep(5000)
 
-var arr: array[2, uint64]
-discard getOffsets(arr)
+var offs: array[2, uint64]
+getOffsets(offs)
 
+var counts: array[2, uint64]
+    
 #dumpNumberOfInstances()
 
 var line = newStringOfCap(256)
@@ -73,11 +75,36 @@ for log in logs:
         searchers.add(Searcher(str : name, tab : tab))
     try:
         let st = openFileStream(log.path, fmRead)
+        var count : uint64 = offs[log.id]
+        for _ in 1..offs[log.id]:
+            discard st.readLine(line)
         while st.readLine(line):
+            count += 1
             if isImportant(line, searchers):
-                discard line
+                stdout.writeLine line
         st.close()
+        counts[log.id] = count
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
+
+let diag = newFileStream(stderr)
+
+try:
+    let st = openFileStream("offsets.txt", fmWrite)
+    st.write(counts)
+    st.flush()
+    st.close()
+except IOError:
+    diag.write "Could not write new offsets:"
+    diag.writeLine getCurrentExceptionMsg()
+
+for log in logs:
+    diag.write log.name, ": "
+    if offs[log.id] != counts[log.id]:
+        diag.writeLine "new offset ", offs[log.id]
+    else:
+        diag.writeLine "no changes, retaining ", offs[log.id]
+
+diag.flush()
 
 #dumpNumberOfInstances()
