@@ -87,7 +87,7 @@ for log in logs:
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
 
-let diag = newFileStream(stderr)
+let diag = newFileStream(stdout)
 
 try:
     let st = openFileStream("offsets.txt", fmWrite)
