@@ -1,5 +1,7 @@
 import streams, strutils
 
+const offsetFile = ".nivampiric"
+
 type
     Searcher = object
         str: string
@@ -32,40 +34,33 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
 
 proc getOffsets(buf: var array[2, uint64]): void =
     try:
-        let st = openFileStream("offsets.txt", fmRead)
+        let st = openFileStream(offsetFile, fmRead)
         st.read(buf)
         st.close()
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
         stderr.writeLine "0 offsets will be used"
 
-#os.sleep(5000)
-echo "init"
-
 const logs = [
     Log(
         id   : 0,
         name : "log2",
-        path : "#log2bsd.log",
+        path : "log2.log",
         important : @["Name1", "Name2"]
     ),
     Log(
         id   : 1,
         name : "log1",
-        path : "#log1.log",
+        path : "log1.log",
         important : @["Name3"]
     )
 ]
-
-#os.sleep(5000)
 
 var offs: array[2, uint64]
 getOffsets(offs)
 
 var counts: array[2, uint64]
     
-#dumpNumberOfInstances()
-
 var line = newStringOfCap(256)
 for log in logs:
     var searchers = newSeqOfCap[Searcher](log.important.len())
@@ -78,10 +73,14 @@ for log in logs:
         var count : uint64 = offs[log.id]
         for _ in 1..offs[log.id]:
             discard st.readLine(line)
+        if not st.atEnd():
+            stdout.writeLine "==== ", log.name, " ===="
         while st.readLine(line):
             count += 1
             if isImportant(line, searchers):
                 stdout.writeLine line
+        if count > offs[log.id]:
+            stdout.write "\n\n"
         st.close()
         counts[log.id] = count
     except IOError:
@@ -90,21 +89,19 @@ for log in logs:
 let diag = newFileStream(stdout)
 
 try:
-    let st = openFileStream("offsets.txt", fmWrite)
+    let st = openFileStream(offsetFile, fmWrite)
     st.write(counts)
     st.flush()
     st.close()
 except IOError:
-    diag.write "Could not write new offsets:"
-    diag.writeLine getCurrentExceptionMsg()
+    stderr.write "Could not write new offsets:"
+    stderr.writeLine getCurrentExceptionMsg()
 
 for log in logs:
-    diag.write log.name, ": "
+    diag.write log.name, ":\t"
     if offs[log.id] != counts[log.id]:
-        diag.writeLine "new offset ", offs[log.id]
+        diag.writeLine "new offset ", counts[log.id]
     else:
-        diag.writeLine "no changes, retaining ", offs[log.id]
+        diag.writeLine "no changes, retaining ", counts[log.id]
 
 diag.flush()
-
-#dumpNumberOfInstances()
