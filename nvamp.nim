@@ -2,6 +2,8 @@ import streams, strutils
 
 const offsetFile = ".nivampiric"
 
+type Counts = array[2, int]
+
 type
     Searcher = object
         str: string
@@ -32,7 +34,7 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
         return false
     return false
 
-proc getOffsets(buf: var array[2, uint64]): void =
+proc getOffsets(buf: var Counts): void =
     try:
         let st = openFileStream(offsetFile, fmRead)
         st.read(buf)
@@ -56,10 +58,10 @@ const logs = [
     )
 ]
 
-var offs: array[2, uint64]
+var offs: Counts
 getOffsets(offs)
 
-var counts: array[2, uint64]
+var counts: Counts
     
 var line = newStringOfCap(256)
 for log in logs:
@@ -70,18 +72,16 @@ for log in logs:
         searchers.add(Searcher(str : name, tab : tab))
     try:
         let st = openFileStream(log.path, fmRead)
-        var count : uint64 = offs[log.id]
-        for _ in 1..offs[log.id]:
-            discard st.readLine(line)
+        st.setPosition(offs[log.id])
         if not st.atEnd():
             stdout.writeLine "==== ", log.name, " ===="
         while st.readLine(line):
-            count += 1
             if isImportant(line, searchers):
                 stdout.writeLine line
+        let count = st.getPosition()
+        st.close()
         if count > offs[log.id]:
             stdout.write "\n\n"
-        st.close()
         counts[log.id] = count
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
