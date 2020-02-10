@@ -18,7 +18,9 @@ type
 
 func isImportant(line: string, searchers: seq[Searcher]): bool =
     # finding: HH:MM -!-
-    if line.len() > 10 and line.find("-!-", 6, 10) == 6:
+    if line.len() <= 10:
+        return false
+    elif line.find("-!-", 6, 10) == 6:
         return false
     let start = line.find('<')
     if start == -1:
@@ -31,7 +33,6 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
     for search in searchers:
         if search.tab.find(line, search.str, start, stop) >= 0:
             return true
-        return false
     return false
 
 proc getOffsets(buf: var Counts): void =
