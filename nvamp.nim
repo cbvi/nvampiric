@@ -43,65 +43,68 @@ proc getOffsets(buf: var Counts): void =
         stderr.writeLine getCurrentExceptionMsg()
         stderr.writeLine "0 offsets will be used"
 
-const logs = [
-    Log(
-        id   : 0,
-        name : "log2",
-        path : "log2.log",
-        important : @["Name1", "Name2"]
-    ),
-    Log(
-        id   : 1,
-        name : "log1",
-        path : "log1.log",
-        important : @["Name3"]
-    )
-]
+when isMainModule:
+    const logs = [
+        Log(
+            id   : 0,
+            name : "log2",
+            path : "log2.log",
+            important : @["Name1", "Name2"]
+        ),
+        Log(
+            id   : 1,
+            name : "log1",
+            path : "log1.log",
+            important : @["Name3"]
+        )
+    ]
 
-var offs: Counts
-getOffsets(offs)
+    var offs: Counts
+    getOffsets(offs)
 
-var counts: Counts
-    
-var line = newStringOfCap(256)
-for log in logs:
-    var searchers = newSeqOfCap[Searcher](log.important.len())
-    for name in log.important:
-        var tab: SkipTable
-        initSkipTable(tab, name)
-        searchers.add(Searcher(str : name, tab : tab))
+    var counts: Counts
+
+    var line = newStringOfCap(256)
+    for log in logs:
+        var searchers = newSeqOfCap[Searcher](log.important.len())
+        for name in log.important:
+            var tab: SkipTable
+            initSkipTable(tab, name)
+            searchers.add(Searcher(str : name, tab : tab))
+        try:
+            let st = openFileStream(log.path, fmRead)
+            st.setPosition(offs[log.id])
+            if not st.atEnd():
+                stdout.writeLine "==== ", log.name, " ===="
+            while st.readLine(line):
+                if isImportant(line, searchers):
+                    stdout.writeLine line
+            let count = st.getPosition()
+            st.close()
+            if count > offs[log.id]:
+                stdout.write "\n\n"
+            counts[log.id] = count
+        except IOError:
+            stderr.writeLine getCurrentExceptionMsg()
+            quit(QuitFailure)
+
+    let diag = newFileStream(stdout)
+
     try:
-        let st = openFileStream(log.path, fmRead)
-        st.setPosition(offs[log.id])
-        if not st.atEnd():
-            stdout.writeLine "==== ", log.name, " ===="
-        while st.readLine(line):
-            if isImportant(line, searchers):
-                stdout.writeLine line
-        let count = st.getPosition()
+        let st = openFileStream(offsetFile, fmWrite)
+        st.write(counts)
+        st.flush()
         st.close()
-        if count > offs[log.id]:
-            stdout.write "\n\n"
-        counts[log.id] = count
     except IOError:
+        stderr.write "Could not write new offsets:"
         stderr.writeLine getCurrentExceptionMsg()
+        quit(QuitFailure)
 
-let diag = newFileStream(stdout)
+    for log in logs:
+        diag.write log.name, ":\t"
+        if offs[log.id] != counts[log.id]:
+            diag.writeLine "new offset ", counts[log.id]
+        else:
+            diag.writeLine "no changes, retaining ", counts[log.id]
 
-try:
-    let st = openFileStream(offsetFile, fmWrite)
-    st.write(counts)
-    st.flush()
-    st.close()
-except IOError:
-    stderr.write "Could not write new offsets:"
-    stderr.writeLine getCurrentExceptionMsg()
-
-for log in logs:
-    diag.write log.name, ":\t"
-    if offs[log.id] != counts[log.id]:
-        diag.writeLine "new offset ", counts[log.id]
-    else:
-        diag.writeLine "no changes, retaining ", counts[log.id]
-
-diag.flush()
+    diag.flush()
