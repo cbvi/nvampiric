@@ -1,15 +1,12 @@
 import streams, strutils
 
-const offsetFile = ".nivampiric"
-
-type Counts = array[2, int]
-
 type
+    Counts = array[2, int]
+
     Searcher = object
         str: string
         tab: SkipTable
 
-type 
     Log = object
         id: int
         name: string
@@ -22,6 +19,7 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
         return false
     elif line.find("-!-", 6, 10) == 6:
         return false
+    # finding < NAME>
     let start = line.find('<')
     if start == -1:
         return false
@@ -31,20 +29,21 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
     if stop <= start:
         return false
     for search in searchers:
-        if search.tab.find(line, search.str, start, stop) >= 0:
+        if find(search.tab, line, search.str, start, stop) >= 0:
             return true
     return false
 
-proc getOffsets(buf: var Counts): void =
+proc getOffsets(file: string): Counts =
     try:
-        let st = openFileStream(offsetFile, fmRead)
-        st.read(buf)
-        st.close()
+        let st = openFileStream(file, fmRead)
+        defer: st.close()
+        st.read(result)
     except IOError:
         stderr.writeLine getCurrentExceptionMsg()
         stderr.writeLine "0 offsets will be used"
 
 when isMainModule:
+    const offsetFile = ".nivampiric"
     const logs = [
         Log(
             id   : 0,
@@ -60,8 +59,7 @@ when isMainModule:
         )
     ]
 
-    var offs: Counts
-    getOffsets(offs)
+    let offs = getOffsets(offsetFile)
 
     var counts: Counts
 
