@@ -1,5 +1,7 @@
 import streams, strutils
 
+{.push raises: [].}
+
 type
     Counts = array[2, int]
 
@@ -38,9 +40,17 @@ proc getOffsets(file: string): Counts =
         let st = openFileStream(file, fmRead)
         defer: st.close()
         st.read(result)
-    except IOError:
-        stderr.writeLine getCurrentExceptionMsg()
-        stderr.writeLine "0 offsets will be used"
+    except OSError, IOError:
+        try:
+            stderr.writeLine getCurrentExceptionMsg()
+            stderr.writeLine "0 offsets will be used"
+        except:
+            discard
+    except:
+        try:
+            stderr.writeLine getCurrentExceptionMsg()
+        except:
+            discard
 
 when isMainModule:
     const offsetFile = ".nivampiric"
