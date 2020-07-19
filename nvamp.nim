@@ -15,6 +15,13 @@ type
         path: string
         important: seq[string]
 
+func getEmoteName(line: string, off: int): (int, int) =
+    let start = off + 2
+    let stop = line.find(' ', start)
+    if stop == -1:
+        return (-1, -1)
+    return (start, stop - 1)
+
 func isImportant(line: string, searchers: seq[Searcher]): bool =
     # finding: HH:MM -!-
     if line.len() <= 10:
@@ -22,10 +29,15 @@ func isImportant(line: string, searchers: seq[Searcher]): bool =
     elif line.find("-!-", 6, 10) == 6:
         return false
     # finding < NAME>
-    let start = line.find('<')
-    if start == -1:
-        return false
-    let stop = line.find('>', start)
+
+    var start, stop : int
+    if line[7] == '*':
+        (start, stop) = getEmoteName(line, 7)
+    else:
+        start = line.find('<')
+        if start == -1:
+            return false
+        stop = line.find('>')
     if stop == -1:
         return false
     if stop <= start:
