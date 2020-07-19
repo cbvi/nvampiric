@@ -85,7 +85,7 @@ when isMainModule:
 
     var counts: Counts
 
-    var line = newStringOfCap(256)
+    var line = newStringOfCap(512)
     for log in logs:
         var searchers = newSeqOfCap[Searcher](log.important.len())
         for name in log.important:
