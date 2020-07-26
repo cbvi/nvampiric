@@ -1,4 +1,4 @@
-import streams, strutils
+import streams, strutils, os
 
 {.push raises: [].}
 
@@ -117,8 +117,8 @@ when isMainModule:
         st.flush()
         st.close()
     except IOError:
-        stderr.write "Could not write new offsets:"
-        stderr.writeLine getCurrentExceptionMsg()
+        stderr.writeLine "Could not write new offsets: " &
+            getCurrentExceptionMsg() & ": " & osErrorMsg(osLastError())
         quit(QuitFailure)
 
     for log in logs:
